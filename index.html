@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ticket Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+  /* ====== CHANGE THESE TWO VALUES (Supabase -> Project Settings -> API) ====== */
+  window.TICKET_DESK = {
+    SUPABASE_URL: "https://YOUR-PROJECT-ID.supabase.co",
+    SUPABASE_ANON_KEY: "YOUR-ANON-PUBLIC-KEY"
+  };
+</script>
+<style>
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --sunk:#e8ecee; --line:#d5dcdf;
+  --ink:#16232a; --muted:#5b6b73; --band:#14262e; --band-ink:#e6eef0;
+  --accent:#0f7b74; --accent-ink:#ffffff; --accent-soft:#d8efec;
+  --urgent:#c2410c; --urgent-soft:#fde5d8;
+  --ok:#2f7d32; --ok-soft:#dcefdc; --warn:#a46200; --warn-soft:#fbedd2;
+  --bad:#b42318; --bad-soft:#fbe0dd; --info:#2459a8; --info-soft:#dde8f8;
+  --violet:#6a3fb0; --violet-soft:#ebe2f8;
+  --display:"Familjen Grotesk","Segoe UI",system-ui,sans-serif;
+  --body:"Figtree","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:8px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f171b; --surface:#172329; --sunk:#1e2c33; --line:#2b3c44;
+  --ink:#e3ecef; --muted:#93a5ad; --band:#0a1216; --band-ink:#dce7ea;
+  --accent:#3fb8ae; --accent-ink:#06201e; --accent-soft:#163a37;
+  --urgent:#ff8a4c; --urgent-soft:#3d2214;
+  --ok:#7cc77f; --ok-soft:#1b3320; --warn:#e9b257; --warn-soft:#382a12;
+  --bad:#f2837a; --bad-soft:#3b1a17; --info:#8db4f0; --info-soft:#1a2a44;
+  --violet:#b996ef; --violet-soft:#2b2140; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;min-height:100vh}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* auth screens */
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--band)}
+.auth .box{width:min(420px,100%);background:var(--surface);border-radius:12px;padding:28px}
+.auth .brand{margin-bottom:18px}
+.auth h2{font-size:24px;margin-bottom:4px}
+.auth p.lead{color:var(--muted);margin:0 0 18px;font-size:14px}
+.auth form{display:flex;flex-direction:column;gap:14px}
+.linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-weight:600}
+.msg{border-radius:6px;padding:10px 12px;font-size:14px}
+.msg.err{background:var(--bad-soft);color:var(--bad)}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+
+/* header */
+header{background:var(--band);color:var(--band-ink);position:sticky;top:0;z-index:5;padding-top:env(safe-area-inset-top,0px)}
+.hrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:14px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand .mark{width:30px;height:30px;border-radius:6px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-family:var(--mono);font-size:13px}
+.brand h1{font-size:20px;font-weight:700}
+.auth .brand h1{color:var(--ink)}
+.who{display:flex;align-items:center;gap:10px;font-size:14px}
+.role-pill{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:99px;background:#ffffff1c;text-transform:uppercase;letter-spacing:.05em}
+.signout{background:#ffffff14;border:1px solid #ffffff2e;color:var(--band-ink);border-radius:6px;padding:5px 10px;cursor:pointer}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{background:none;border:0;color:var(--band-ink);opacity:.7;padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;font-weight:500}
+nav.tabs button[aria-selected="true"]{opacity:1;border-color:var(--accent)}
+nav.tabs .n{font-family:var(--mono);font-size:11px;margin-left:6px;background:#ffffff22;padding:1px 6px;border-radius:99px}
+main{padding-block:24px 60px}
+.sec-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:10px;margin-bottom:16px}
+.sec-head h2{font-size:24px}
+.sec-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:18px}
+.strip div{background:var(--surface);padding:10px 14px}
+.strip b{display:block;font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+.strip span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.full{grid-column:1/-1}
+@media (max-width:640px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label,.lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+input[type=text],input[type=email],input[type=tel],input[type=password],select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px}
+textarea{min-height:96px;resize:vertical}
+.auto{font-family:var(--mono);font-size:13px;background:var(--sunk);border:1px dashed var(--line);border-radius:6px;padding:9px 11px;color:var(--muted)}
+.prio{display:flex;gap:8px}
+.prio label{flex:1;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;padding:9px 12px;cursor:pointer;background:var(--bg);font-size:15px;color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0}
+.prio input{accent-color:var(--accent)}
+.prio label:has(input[value=urgent]:checked){border-color:var(--urgent);background:var(--urgent-soft)}
+.prio label:has(input[value=normal]:checked){border-color:var(--accent);background:var(--accent-soft)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600}
+.btn:hover{background:var(--sunk)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.bad{background:transparent;border-color:var(--bad);color:var(--bad)}
+.btn.info{background:var(--info);border-color:var(--info);color:#fff}
+.btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.hint{font-size:13px;color:var(--muted)}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.filters select,.filters input{width:auto;min-width:0;flex:1 1 150px;max-width:240px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:grid;grid-template-columns:90px minmax(0,1fr) 150px 190px;gap:12px;align-items:center;padding:12px 16px;border:0;border-top:1px solid var(--line);border-left:4px solid transparent;cursor:pointer;width:100%;text-align:left;background:none}
+.row:first-child{border-top:0}
+.row:hover{background:var(--sunk)}
+.row.urgent{border-left-color:var(--urgent)}
+.row .no{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.row .t{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sub{font-size:13px;color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .when{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:760px){.row{grid-template-columns:minmax(0,1fr) auto}.row .no{grid-column:1/-1}.row .when{display:none}}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-open{background:var(--info-soft);color:var(--info)}
+.s-processing{background:var(--violet-soft);color:var(--violet)}
+.s-pending_approval{background:var(--warn-soft);color:var(--warn)}
+.s-approved{background:var(--accent-soft);color:var(--accent)}
+.s-resolved{background:var(--ok-soft);color:var(--ok)}
+.s-closed{background:var(--sunk);color:var(--muted)}
+.s-rejected{background:var(--bad-soft);color:var(--bad)}
+.s-invited{background:var(--warn-soft);color:var(--warn)}
+.s-joined{background:var(--ok-soft);color:var(--ok)}
+.s-off{background:var(--sunk);color:var(--muted)}
+.p-urgent{color:var(--urgent);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.empty{padding:36px 20px;text-align:center;color:var(--muted)}
+.empty h3{color:var(--ink);font-size:18px;margin-bottom:6px}
+.two{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.two{grid-template-columns:minmax(0,1fr)}}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line);white-space:nowrap}
+th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--sunk)}
+.tag{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;background:var(--sunk);text-transform:uppercase}
+.companies{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.companies span{background:var(--sunk);padding:4px 10px;border-radius:99px;font-size:13px}
+
+.scrim{position:fixed;inset:0;background:#0008;z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--bg);z-index:21;overflow-y:auto;border-left:1px solid var(--line);
+  padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(30px + env(safe-area-inset-bottom,0px)) 20px}
+.dh{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:14px}
+.dh .no{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.dh h2{font-size:22px;margin-top:4px}
+.x{background:var(--sunk);border:0;border-radius:6px;width:34px;height:34px;cursor:pointer;font-size:18px;flex:none}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:16px 0 18px;list-style:none;padding:0}
+.steps li{font-size:11px;color:var(--muted);border-top:4px solid var(--line);padding-top:6px;line-height:1.25}
+.steps li.done{border-color:var(--accent);color:var(--ink)}
+.steps li.now{border-color:var(--warn);color:var(--ink);font-weight:600}
+.steps li.fail{border-color:var(--bad);color:var(--bad);font-weight:600}
+.kv{display:grid;grid-template-columns:120px minmax(0,1fr);gap:6px 12px;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin:0 0 14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;overflow-wrap:anywhere}
+.desc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:14px}
+.act{background:var(--surface);border:2px solid var(--accent);border-radius:var(--r);padding:14px 16px;margin-bottom:16px}
+.act h3{font-size:15px;margin-bottom:8px}
+.act textarea{min-height:64px;margin-bottom:10px}
+.log{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+.log li{position:relative;padding:0 0 14px 16px;font-size:14px}
+.log li::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.log .meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.log .note{background:var(--sunk);padding:6px 10px;border-radius:6px;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;font-weight:500;max-width:calc(100% - 32px)}
+.loading{min-height:100vh;display:grid;place-items:center;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div id="screen" class="loading">Loading…</div>
+<div id="drawerHost"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- read the link BEFORE supabase parses it ---------- */
+const qs = new URLSearchParams(location.search);
+const hs = new URLSearchParams(location.hash.slice(1));
+let needPassword = qs.get("setpw") === "1" || ["invite","recovery"].includes(hs.get("type"));
+const linkError = hs.get("error_description") || qs.get("error_description");
+
+const CFG = window.TICKET_DESK || {};
+const configured = CFG.SUPABASE_URL && !CFG.SUPABASE_URL.includes("YOUR-PROJECT");
+const sb = configured ? supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+
+const STATUS = {
+  open:"Open", processing:"Processing", pending_approval:"Pending approval",
+  approved:"Approved", resolved:"Resolved · awaiting your confirmation",
+  closed:"Closed", rejected:"Rejected"
+};
+const ROLES = {employee:"Employee", manager:"Manager", support:"Support", admin:"Admin"};
+
+let session=null, me=null;
+let profiles=[], companies=[], tickets=[];
+let tab="mine", openId=null, hist=[], fresh=false;
+let filt={status:"active", company:"", prio:"", q:""};
+let channel=null, editUserId=null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = iso => iso ? new Date(iso).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+const prof = id => profiles.find(p=>p.id===id);
+const coName = id => companies.find(c=>c.id===id)?.name || "—";
+const isStaff = () => ["support","admin"].includes(me?.role);
+const isAdmin = () => me?.role==="admin";
+const reports = () => profiles.filter(p=>p.manager_id===me?.id);
+const tno = t => "TK-" + t.id;
+
+function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3000); }
+function screen(html, cls=""){ const s=$("#screen"); s.className=cls; s.innerHTML=html; }
+const brand = `<div class="brand"><div class="mark">TK</div><h1>Ticket Desk</h1></div>`;
+
+/* =================== AUTH SCREENS =================== */
+function showLogin(msg){
+  screen(`<div class="box">${brand}
+    <h2>Sign in</h2><p class="lead">Use the email your admin registered and the password you set.</p>
+    ${msg||""}
+    <form id="fLogin" novalidate>
+      <div class="field"><label for="lEmail">Email</label><input type="email" id="lEmail" autocomplete="email" required></div>
+      <div class="field"><label for="lPass">Password</label><input type="password" id="lPass" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit">Sign in</button>
+      <p class="hint" style="margin:0">Forgot your password? <button type="button" class="linkbtn" id="toForgot">Send me a reset link</button></p>
+      <p class="hint" style="margin:0">No account? Only your admin can add you.</p>
+    </form></div>`, "auth");
+  $("#lEmail").focus();
+}
+function showForgot(){
+  screen(`<div class="box">${brand}
+    <h2>Reset password</h2><p class="lead">We'll email you a link to set a new password.</p>
+    <form id="fForgot" novalidate>
+      <div class="field"><label for="fgEmail">Email</label><input type="email" id="fgEmail" required></div>
+      <button class="btn primary" type="submit">Email me a link</button>
+      <button type="button" class="linkbtn" id="toLogin">Back to sign in</button>
+    </form></div>`, "auth");
+}
+function showSetPassword(){
+  const name = me?.full_name ? `, ${esc(me.full_name.split(" ")[0])}` : "";
+  screen(`<div class="box">${brand}
+    <h2>Welcome${name}</h2><p class="lead">Set a password for <b>${esc(session.user.email)}</b>. You'll use it to sign in from now on.</p>
+    <form id="fSetPw" novalidate>
+      <div class="field"><label for="p1">New password</label><input type="password" id="p1" autocomplete="new-password" minlength="8" required></div>
+      <div class="field"><label for="p2">Repeat password</label><input type="password" id="p2" autocomplete="new-password" required></div>
+      <p class="hint" style="margin:0">At least 8 characters.</p>
+      <button class="btn primary" type="submit">Save password &amp; continue</button>
+    </form></div>`, "auth");
+  $("#p1").focus();
+}
+function showNoProfile(){
+  screen(`<div class="box">${brand}<h2>Account not active</h2>
+    <p class="lead">You're signed in as ${esc(session.user.email)}, but this account isn't set up or has been turned off. Ask your admin to check it.</p>
+    <button class="btn" id="btnOut">Sign out</button></div>`, "auth");
+}
+function showNotConfigured(){
+  screen(`<div class="box">${brand}<h2>Connect your database</h2>
+    <p class="lead">Open <b>index.html</b>, find <code>TICKET_DESK</code> near the top, and paste your Supabase Project URL and anon key. The README explains each step.</p></div>`, "auth");
+}
+
+/* =================== SESSION =================== */
+async function onSession(s){
+  session = s;
+  if(!session){
+    me=null; if(channel){ sb.removeChannel(channel); channel=null; }
+    if(needPassword && linkError) return showLogin(`<div class="msg err">That link has expired or was already used. Ask your admin to resend it, or use "Send me a reset link".</div>`);
+    return showLogin();
+  }
+  const { data } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+  me = data;
+  if(needPassword) return showSetPassword();
+  if(!me || !me.active) return showNoProfile();
+  await loadAll();
+  tab = isStaff() ? "desk" : "mine";
+  startRealtime();
+  render();
+}
+
+async function loadAll(){
+  const [p,c,t] = await Promise.all([
+    sb.from("profiles").select("*").order("full_name"),
+    sb.from("companies").select("*").order("name"),
+    sb.from("tickets").select("*").order("created_at",{ascending:false}).limit(1000)
+  ]);
+  profiles = p.data||[]; companies = c.data||[]; tickets = t.data||[];
+  const fresh = profiles.find(x=>x.id===me.id); if(fresh) me = fresh;
+}
+let reloadT;
+function startRealtime(){
+  if(channel) return;
+  channel = sb.channel("desk")
+    .on("postgres_changes",{event:"*",schema:"public",table:"tickets"}, ()=>{
+      clearTimeout(reloadT);
+      reloadT = setTimeout(async ()=>{
+        const r = await sb.from("tickets").select("*").order("created_at",{ascending:false}).limit(1000);
+        if(r.data){ tickets=r.data; render(); if(openId) loadHistory(openId); }
+      }, 300);
+    }).subscribe();
+}
+
+/* =================== APP SHELL =================== */
+function tabs(){
+  const t=[{id:"new",label:"New ticket"},{id:"mine",label:"My tickets"}];
+  if(me.role==="manager" || isAdmin() || reports().length) t.push({id:"team",label:"My team"});
+  if(isStaff()) t.push({id:"desk",label: isAdmin() ? "All tickets" : "Support desk"});
+  if(isAdmin()) t.push({id:"users",label:"Users"});
+  return t;
+}
+function counts(){
+  const ids = reports().map(r=>r.id);
+  return {
+    mine: tickets.filter(t=>t.created_by===me.id && t.status==="resolved").length,
+    team: tickets.filter(t=>t.status==="pending_approval" && (ids.includes(t.created_by) || (isAdmin() && !prof(t.created_by)?.manager_id))).length,
+    desk: tickets.filter(t=>["open","processing","approved"].includes(t.status)).length,
+    users: profiles.filter(p=>!p.joined_at && p.active).length
+  };
+}
+function render(){
+  if(!me) return;
+  const ts = tabs(); if(!ts.find(x=>x.id===tab)) tab="mine";
+  const c = counts();
+  // keep typed values across live refreshes
+  const keep={}; if(!fresh) document.querySelectorAll("#main input:not([type=radio]),#main textarea,#main select").forEach(el=>{ if(el.id && !el.id.startsWith("f_")) keep[el.id]=el.value; });
+  const prio = fresh ? null : document.querySelector('#main input[name=prio]:checked')?.value; fresh=false;
+  const focus = document.activeElement?.id;
+  const view = {new:vNew, mine:vMine, team:vTeam, desk:vDesk, users:vUsers}[tab]();
+  screen(`<header><div class="wrap">
+      <div class="hrow">${brand}
+        <div class="who"><span>${esc(me.full_name)}</span><span class="role-pill">${ROLES[me.role]}</span><button class="signout" id="btnOut">Sign out</button></div>
+      </div>
+      <nav class="tabs" role="tablist">${ts.map(x=>`<button role="tab" data-tab="${x.id}" aria-selected="${x.id===tab}">${x.label}${c[x.id]?`<span class="n">${c[x.id]}</span>`:""}</button>`).join("")}</nav>
+    </div></header>
+    <main class="wrap" id="main">${view}</main>`);
+  Object.entries(keep).forEach(([k,v])=>{ const el=document.getElementById(k); if(el && el.tagName!=="BUTTON") el.value=v; });
+  if(prio){ const r=document.querySelector(`#main input[name=prio][value=${prio}]`); if(r) r.checked=true; }
+  if(focus){ const el=document.getElementById(focus); if(el) el.focus(); }
+  renderDrawer();
+}
+
+/* =================== VIEWS =================== */
+function vNew(){
+  const mgr = prof(me.manager_id);
+  return `<div class="sec-head"><div><h2>Raise a ticket</h2><p>Support reviews it first. If approval is needed it goes to your manager.</p></div></div>
+  <form class="card grid2" id="fNew" novalidate>
+    <div class="field"><label for="nCompany">Company</label>
+      <select id="nCompany">${companies.length?"":`<option value="">No companies yet — ask admin</option>`}${companies.map(c=>`<option value="${c.id}" ${c.id===me.company_id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></div>
+    <div class="field"><span class="lbl">Date &amp; time</span><div class="auto" id="nWhen">${fmt(new Date().toISOString())} · set automatically</div></div>
+    <div class="field full"><label for="nTitle">Problem in one line</label><input type="text" id="nTitle" maxlength="150" placeholder="e.g. Outlook not syncing since this morning"></div>
+    <div class="field full"><label for="nDesc">Details</label><textarea id="nDesc" placeholder="What happened, what you tried, any error message"></textarea></div>
+    <div class="field full"><span class="lbl">Priority</span>
+      <div class="prio"><label><input type="radio" name="prio" value="normal" checked> Normal</label><label><input type="radio" name="prio" value="urgent"> Urgent</label></div></div>
+    <div class="field"><label for="nEmail">Your email</label><input type="email" id="nEmail" value="${esc(me.email)}"></div>
+    <div class="field"><label for="nMobile">Mobile number</label><input type="tel" id="nMobile" value="${esc(me.mobile)}" placeholder="+971 50 123 4567"></div>
+    <div class="full btns"><button class="btn primary" type="submit" id="nSubmit">Submit ticket</button>
+      <span class="hint">Approver: ${mgr?esc(mgr.full_name):"no manager assigned (Admin approves)"}</span></div>
+  </form>`;
+}
+function list(rows, o={}){
+  let r=rows;
+  if(o.filters){
+    if(filt.status==="active") r=r.filter(t=>!["closed","rejected"].includes(t.status));
+    else if(filt.status) r=r.filter(t=>t.status===filt.status);
+    if(filt.company) r=r.filter(t=>t.company_id===filt.company);
+    if(filt.prio) r=r.filter(t=>t.priority===filt.prio);
+    if(filt.q){ const q=filt.q.toLowerCase(); r=r.filter(t=>(tno(t)+" "+t.title+" "+(t.creator_name||"")).toLowerCase().includes(q)); }
+  }
+  r=r.slice().sort((a,b)=>(b.priority==="urgent")-(a.priority==="urgent") || b.created_at.localeCompare(a.created_at));
+  const f = o.filters ? `<div class="filters">
+    <select id="f_status" aria-label="Status"><option value="active"${filt.status==="active"?" selected":""}>All active</option><option value=""${filt.status===""?" selected":""}>All statuses</option>${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${filt.status===k?" selected":""}>${k==="resolved"?"Resolved":v}</option>`).join("")}</select>
+    <select id="f_company" aria-label="Company"><option value="">All companies</option>${companies.map(c=>`<option value="${c.id}"${filt.company===c.id?" selected":""}>${esc(c.name)}</option>`).join("")}</select>
+    <select id="f_prio" aria-label="Priority"><option value="">Any priority</option><option value="urgent"${filt.prio==="urgent"?" selected":""}>Urgent</option><option value="normal"${filt.prio==="normal"?" selected":""}>Normal</option></select>
+    <input type="text" id="f_q" placeholder="Search number, title, name" value="${esc(filt.q)}">
+  </div>` : "";
+  const body = r.length ? r.map(t=>`<button class="row ${t.priority==="urgent"?"urgent":""}" data-open="${t.id}">
+      <span class="no">${tno(t)}</span>
+      <span style="min-width:0"><span class="t">${t.priority==="urgent"?`<span class="p-urgent">Urgent · </span>`:""}${esc(t.title)}</span><span class="sub">${esc(t.creator_name||"")} · ${esc(coName(t.company_id))}</span></span>
+      <span class="when">${fmt(t.created_at)}</span>
+      <span><span class="chip s-${t.status}">${t.status==="resolved"&&t.created_by!==me.id?"Resolved · awaiting user":STATUS[t.status]}</span></span>
+    </button>`).join("") : `<div class="empty"><h3>${o.emptyTitle||"No tickets"}</h3><p>${o.emptyText||""}</p></div>`;
+  return f + `<div class="list">${body}</div>`;
+}
+function vMine(){
+  const rows = tickets.filter(t=>t.created_by===me.id);
+  const wait = rows.filter(t=>t.status==="resolved").length;
+  return `<div class="sec-head"><div><h2>My tickets</h2><p>${wait?`${wait} ticket${wait>1?"s are":" is"} resolved and waiting for your confirmation. Open it to confirm.`:"Track the status of everything you raised."}</p></div><button class="btn primary" data-tab="new">New ticket</button></div>`
+   + list(rows,{emptyTitle:"You haven't raised a ticket yet",emptyText:"Use New ticket to report a problem."});
+}
+function vTeam(){
+  const ids = reports().map(r=>r.id);
+  const rows = tickets.filter(t=>ids.includes(t.created_by) || (isAdmin() && t.status==="pending_approval" && !prof(t.created_by)?.manager_id));
+  const pend = rows.filter(t=>t.status==="pending_approval");
+  return `<div class="sec-head"><div><h2>My team</h2><p>${ids.length} ${ids.length===1?"person reports":"people report"} to you${ids.length?": "+reports().map(r=>esc(r.full_name)).join(", "):""}.</p></div></div>
+    <h3 style="font-size:16px;margin:0 0 8px">Waiting for your approval (${pend.length})</h3>
+    ${list(pend,{emptyTitle:"Nothing to approve",emptyText:"Tickets support sends for approval appear here."})}
+    <h3 style="font-size:16px;margin:22px 0 8px">All team tickets</h3>
+    ${list(rows.filter(t=>t.status!=="pending_approval"),{emptyTitle:"No other team tickets"})}`;
+}
+function vDesk(){
+  const c=s=>tickets.filter(t=>t.status===s).length;
+  return `<div class="sec-head"><div><h2>${isAdmin()?"All tickets":"Support desk"}</h2><p>Review new tickets, send for manager approval, and resolve approved ones.</p></div></div>
+   <div class="strip"><div><b>${c("open")}</b><span>Open</span></div><div><b>${c("processing")}</b><span>Processing</span></div><div><b>${c("pending_approval")}</b><span>With manager</span></div><div><b>${c("approved")}</b><span>Approved · to resolve</span></div><div><b>${c("resolved")}</b><span>Awaiting user</span></div><div><b>${tickets.filter(t=>t.priority==="urgent"&&!["closed","rejected"].includes(t.status)).length}</b><span>Urgent active</span></div></div>`
+   + list(tickets,{filters:true,emptyTitle:"No tickets match",emptyText:"Change the filters to see more."});
+}
+function userForm(u){
+  const edit = !!u; u = u || {};
+  const deps=[...new Set(profiles.map(p=>p.department).filter(Boolean))];
+  const des=[...new Set(profiles.map(p=>p.designation).filter(Boolean))];
+  const mgrs = profiles.filter(p=>["manager","admin"].includes(p.role) && p.active && p.id!==u.id);
+  return `<form class="card grid2" id="${edit?"fEdit":"fInvite"}" novalidate>
+    <h3 class="full" style="font-size:17px">${edit?`Edit ${esc(u.full_name)}`:"Add user"}</h3>
+    ${edit?"":`<p class="full hint" style="margin:-8px 0 0">They'll get an email with a link to set their password.</p>`}
+    <div class="field"><label for="uName">Full name</label><input type="text" id="uName" value="${esc(u.full_name)}"></div>
+    <div class="field"><label for="uEmail">Email</label><input type="email" id="uEmail" value="${esc(u.email)}" ${edit?"disabled":""}></div>
+    <div class="field"><label for="uMobile">Mobile</label><input type="tel" id="uMobile" value="${esc(u.mobile)}"></div>
+    <div class="field"><label for="uCompany">Company</label><select id="uCompany"><option value="">—</option>${companies.map(c=>`<option value="${c.id}" ${c.id===u.company_id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></div>
+    <div class="field"><label for="uDept">Department</label><input type="text" id="uDept" list="dlDept" value="${esc(u.department)}" placeholder="e.g. Finance"><datalist id="dlDept">${deps.map(d=>`<option value="${esc(d)}">`).join("")}</datalist></div>
+    <div class="field"><label for="uDesig">Designation</label><input type="text" id="uDesig" list="dlDesig" value="${esc(u.designation)}" placeholder="e.g. Accountant"><datalist id="dlDesig">${des.map(d=>`<option value="${esc(d)}">`).join("")}</datalist></div>
+    <div class="field"><label for="uRole">Role</label><select id="uRole">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k===(u.role||"employee")?"selected":""}>${v}</option>`).join("")}</select></div>
+    <div class="field"><label for="uMgr">Manager</label><select id="uMgr"><option value="">No manager</option>${mgrs.map(m=>`<option value="${m.id}" ${m.id===u.manager_id?"selected":""}>${esc(m.full_name)}${m.designation?" · "+esc(m.designation):""}</option>`).join("")}</select></div>
+    ${edit?`<div class="field full"><label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ink)"><input type="checkbox" id="uActive" ${u.active?"checked":""}> Account active (unticked users can't sign in to the desk)</label></div>`:""}
+    <div class="full btns"><button class="btn primary" type="submit" id="uSubmit">${edit?"Save changes":"Add user & send invite"}</button>${edit?`<button class="btn" type="button" data-cancel-edit>Cancel</button>`:""}</div>
+  </form>`;
+}
+function vUsers(){
+  const editing = editUserId ? prof(editUserId) : null;
+  const st = p => !p.active ? `<span class="chip s-off">Off</span>` : p.joined_at ? `<span class="chip s-joined">Joined</span>` : `<span class="chip s-invited">Invite sent</span>`;
+  return `<div class="sec-head"><div><h2>Users</h2><p>Add people, choose their manager, and see who has joined.</p></div></div>
+  <div class="two">
+    ${userForm(editing)}
+    <div class="card">
+      <h3 style="font-size:17px;margin-bottom:10px">Companies</h3>
+      <form id="fCo" class="btns" novalidate><input type="text" id="coName" placeholder="Company name" style="flex:1;min-width:0"><button class="btn primary" type="submit">Add</button></form>
+      <div class="companies">${companies.map(c=>`<span>${esc(c.name)}</span>`).join("")||`<span class="hint" style="background:none">Add a company before adding users.</span>`}</div>
+    </div>
+  </div>
+  <h3 style="font-size:16px;margin:24px 0 8px">${profiles.length} users</h3>
+  <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Status</th><th>Role</th><th>Manager</th><th>Company</th><th>Department</th><th>Designation</th><th>Email</th><th>Mobile</th><th></th></tr></thead><tbody>
+  ${profiles.map(p=>`<tr><td><b>${esc(p.full_name)}</b></td><td>${st(p)}</td><td><span class="tag">${ROLES[p.role]}</span></td><td>${esc(prof(p.manager_id)?.full_name||"—")}</td><td>${esc(coName(p.company_id))}</td><td>${esc(p.department||"")}</td><td>${esc(p.designation||"")}</td><td>${esc(p.email)}</td><td>${esc(p.mobile||"")}</td>
+    <td class="btns" style="flex-wrap:nowrap"><button class="btn sm" data-edit="${p.id}">Edit</button>${p.id!==me.id?`<button class="btn sm" data-resend="${p.id}">${p.joined_at?"Send reset link":"Resend invite"}</button>`:""}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+/* =================== TICKET DRAWER =================== */
+async function loadHistory(id){
+  const r = await sb.from("ticket_history").select("*").eq("ticket_id",id).order("created_at");
+  if(openId===id){ hist=r.data||[]; renderDrawer(); }
+}
+function stepper(t){
+  const h=hist.map(x=>x.status), has=s=>h.includes(s);
+  const fail = t.status==="rejected" ? (has("pending_approval")?2:1) : -1;
+  const names=["Submitted","Support review","Manager approval","Resolved by support","User confirmed"];
+  const reached=[true, has("processing")||has("pending_approval")||t.status==="rejected", has("approved"), has("resolved"), t.status==="closed"];
+  const now={open:1,processing:1,pending_approval:2,approved:3,resolved:4}[t.status];
+  return `<ol class="steps">${names.map((n,i)=>{ let c=reached[i]?"done":""; if(i===fail)c="fail"; else if(i===now)c="now"; return `<li class="${c}">${n}${i===fail?" · rejected":""}</li>`; }).join("")}</ol>`;
+}
+function actions(t){
+  const creator = prof(t.created_by);
+  const mgrId = creator?.manager_id;
+  const isMgr = mgrId===me.id;
+  const adminFallback = isAdmin();
+  const box=(title,btns)=>`<div class="act"><h3>${title}</h3><textarea id="actNote" placeholder="Note (recommended when rejecting)"></textarea><div class="btns">${btns}</div></div>`;
+  if(isStaff() && t.status==="open") return box("Support action",`<button class="btn info" data-do="processing">Mark processing</button><button class="btn warn" data-do="pending_approval">Send for manager approval</button><button class="btn bad" data-do="rejected">Reject</button>`);
+  if(isStaff() && t.status==="processing") return box("Support action",`<button class="btn warn" data-do="pending_approval">Send for manager approval</button><button class="btn bad" data-do="rejected">Reject</button>`);
+  if(t.status==="pending_approval" && (isMgr || adminFallback)) return box("Approval needed",`<button class="btn ok" data-do="approved">Approve</button><button class="btn bad" data-do="rejected">Reject</button>`);
+  if(isStaff() && t.status==="approved") return box("Approved by manager. Resolve it",`<button class="btn ok" data-do="resolved">Mark resolved</button>`);
+  if(t.status==="resolved" && t.created_by===me.id) return box("Support says this is fixed. Is it?",`<button class="btn ok" data-do="closed">Yes, confirm &amp; close</button><button class="btn bad" data-do="processing">No, still a problem</button>`);
+  const w={open:"Waiting for support to review.",processing:"Support is working on it.",pending_approval:`Waiting for ${esc(prof(mgrId)?.full_name||"the manager")} to approve.`,approved:"Approved. Waiting for support to resolve.",resolved:`Waiting for ${esc(t.creator_name||"the user")} to confirm.`}[t.status];
+  return w?`<p class="hint" style="margin:0 0 16px">${w}</p>`:"";
+}
+function renderDrawer(){
+  const host=$("#drawerHost"); const t=tickets.find(x=>x.id===openId);
+  if(!t||!me){ host.innerHTML=""; return; }
+  const note=$("#actNote")?.value||"";
+  const creator=prof(t.created_by);
+  host.innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Ticket ${tno(t)}">
+    <div class="dh"><div><span class="no">${tno(t)}</span> ${t.priority==="urgent"?`<span class="p-urgent">· Urgent</span>`:""}<h2>${esc(t.title)}</h2><div style="margin-top:8px"><span class="chip s-${t.status}">${STATUS[t.status]}</span></div></div><button class="x" data-close aria-label="Close">×</button></div>
+    ${stepper(t)}${actions(t)}
+    <dl class="kv">
+      <dt>Raised by</dt><dd>${esc(t.creator_name||"")}${creator?.designation?` · ${esc(creator.designation)}`:""}${creator?.department?`, ${esc(creator.department)}`:""}</dd>
+      <dt>Company</dt><dd>${esc(coName(t.company_id))}</dd>
+      <dt>Manager</dt><dd>${esc(prof(creator?.manager_id)?.full_name || (creator?.manager_id?"Assigned":"Not assigned"))}</dd>
+      <dt>Email</dt><dd>${esc(t.email)}</dd>
+      <dt>Mobile</dt><dd>${esc(t.mobile)}</dd>
+      <dt>Created</dt><dd>${fmt(t.created_at)}</dd>
+    </dl>
+    ${t.description?`<div class="desc">${esc(t.description)}</div>`:""}
+    <h3 style="font-size:15px;margin:0 0 10px">History</h3>
+    <ul class="log">${hist.slice().reverse().map(h=>`<li><b>${STATUS[h.status]||h.status}</b><div class="meta">${fmt(h.created_at)} · ${esc(h.actor_name||"")}</div>${h.note?`<div class="note">${esc(h.note)}</div>`:""}</li>`).join("")||`<li class="hint">Loading…</li>`}</ul>
+  </aside>`;
+  if(note){ const n=$("#actNote"); if(n) n.value=note; }
+}
+
+/* =================== EVENTS =================== */
+async function invokeFn(body){
+  const { data, error } = await sb.functions.invoke("invite-user",{ body });
+  if(error){
+    let msg = error.message;
+    try{ const j = await error.context.json(); if(j?.error) msg=j.error; }catch(_){}
+    throw new Error(msg);
+  }
+  if(data?.error) throw new Error(data.error);
+  return data;
+}
+
+document.addEventListener("click", async e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.id==="btnOut"){ await sb.auth.signOut(); return; }
+  if(b.id==="toForgot") return showForgot();
+  if(b.id==="toLogin") return showLogin();
+  if(b.dataset.tab){ tab=b.dataset.tab; editUserId=null; fresh=true; render(); scrollTo(0,0); return; }
+  if(b.dataset.open){ openId=Number(b.dataset.open); hist=[]; renderDrawer(); loadHistory(openId); return; }
+  if(b.hasAttribute("data-close")){ openId=null; renderDrawer(); return; }
+  if(b.dataset.do){
+    b.disabled=true;
+    const { error } = await sb.rpc("ticket_action",{ p_ticket:openId, p_status:b.dataset.do, p_note:$("#actNote")?.value||null });
+    if(error){ toast(error.message); b.disabled=false; return; }
+    const t=tickets.find(x=>x.id===openId); if(t) t.status=b.dataset.do;
+    toast(`TK-${openId}: ${STATUS[b.dataset.do]}`); const n=$("#actNote"); if(n) n.value="";
+    render(); loadHistory(openId); return;
+  }
+  if(b.dataset.edit){ editUserId=b.dataset.edit; fresh=true; render(); scrollTo(0,0); return; }
+  if(b.hasAttribute("data-cancel-edit")){ editUserId=null; fresh=true; render(); return; }
+  if(b.dataset.resend){
+    b.disabled=true;
+    try{ await invokeFn({action:"resend", id:b.dataset.resend}); toast(`Email sent to ${prof(b.dataset.resend)?.email}`); }
+    catch(err){ toast(err.message); }
+    b.disabled=false; return;
+  }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && openId){ openId=null; renderDrawer(); } });
+document.addEventListener("input", e=>{ if(e.target.id==="f_q"){ filt.q=e.target.value; clearTimeout(render.q); render.q=setTimeout(render,250); } });
+document.addEventListener("change", e=>{
+  const id=e.target.id;
+  if(id==="f_status"){filt.status=e.target.value;render();}
+  if(id==="f_company"){filt.company=e.target.value;render();}
+  if(id==="f_prio"){filt.prio=e.target.value;render();}
+});
+
+document.addEventListener("submit", async e=>{
+  e.preventDefault(); const f=e.target; const btn=f.querySelector("button[type=submit]");
+  const busy = v => { if(btn) btn.disabled=v; };
+
+  if(f.id==="fLogin"){
+    busy(true);
+    const { error } = await sb.auth.signInWithPassword({ email:$("#lEmail").value.trim(), password:$("#lPass").value });
+    busy(false);
+    if(error) showLogin(`<div class="msg err">${error.message==="Invalid login credentials"?"Email or password is wrong.":esc(error.message)}</div>`);
+    return;
+  }
+  if(f.id==="fForgot"){
+    const email=$("#fgEmail").value.trim(); if(!/^\S+@\S+\.\S+$/.test(email)) return toast("Enter a valid email address.");
+    busy(true);
+    const { error } = await sb.auth.resetPasswordForEmail(email,{ redirectTo: location.origin + location.pathname + "?setpw=1" });
+    busy(false);
+    if(error) return toast(error.message);
+    showLogin(`<div class="msg ok">If ${esc(email)} has an account, a reset link is on its way.</div>`);
+    return;
+  }
+  if(f.id==="fSetPw"){
+    const p1=$("#p1").value, p2=$("#p2").value;
+    if(p1.length<8) return toast("Use at least 8 characters.");
+    if(p1!==p2) return toast("The two passwords don't match.");
+    busy(true);
+    const { error } = await sb.auth.updateUser({ password:p1 });
+    if(error){ busy(false); return toast(error.message); }
+    await sb.rpc("mark_joined");
+    needPassword=false; window.history.replaceState(null,"",location.pathname);
+    toast("Password saved");
+    onSession(session);
+    return;
+  }
+  if(f.id==="fNew"){
+    const title=$("#nTitle").value.trim(), email=$("#nEmail").value.trim(), mobile=$("#nMobile").value.trim(), company_id=$("#nCompany").value;
+    if(!company_id) return toast("Choose a company. If the list is empty, ask your admin to add one.");
+    if(title.length<3) return toast("Write the problem in one line.");
+    if(!/^\S+@\S+\.\S+$/.test(email)) return toast("Enter a valid email address.");
+    if(mobile.replace(/\D/g,"").length<7) return toast("Enter a valid mobile number.");
+    busy(true);
+    const { data, error } = await sb.from("tickets").insert({
+      title, description:$("#nDesc").value.trim()||null, company_id,
+      priority:f.querySelector("input[name=prio]:checked").value, email, mobile
+    }).select().single();
+    busy(false);
+    if(error) return toast(error.message);
+    tickets.unshift(data); $("#nTitle").value=""; $("#nDesc").value="";
+    toast(`Ticket TK-${data.id} submitted`); tab="mine"; render();
+    return;
+  }
+  if(f.id==="fInvite" || f.id==="fEdit"){
+    const payload={
+      full_name:$("#uName").value.trim(), mobile:$("#uMobile").value.trim()||null,
+      company_id:$("#uCompany").value||null, department:$("#uDept").value.trim()||null,
+      designation:$("#uDesig").value.trim()||null, role:$("#uRole").value, manager_id:$("#uMgr").value||null
+    };
+    if(!payload.full_name) return toast("Enter the user's full name.");
+    busy(true);
+    if(f.id==="fInvite"){
+      const email=$("#uEmail").value.trim().toLowerCase();
+      if(!/^\S+@\S+\.\S+$/.test(email)){ busy(false); return toast("Enter a valid email address."); }
+      try{ await invokeFn({...payload, email}); toast(`Invite sent to ${email}`); f.reset(); await loadAll(); render(); }
+      catch(err){ toast(err.message); }
+    } else {
+      payload.active=$("#uActive").checked;
+      if(editUserId===me.id && (payload.role!=="admin" || !payload.active)){ busy(false); return toast("You can't remove your own admin access."); }
+      const { error } = await sb.from("profiles").update(payload).eq("id",editUserId);
+      if(error) toast(error.message); else { toast("Saved"); editUserId=null; await loadAll(); fresh=true; render(); }
+    }
+    busy(false); return;
+  }
+  if(f.id==="fCo"){
+    const name=$("#coName").value.trim(); if(!name) return;
+    const { error } = await sb.from("companies").insert({ name });
+    if(error) return toast(error.code==="23505"?"That company is already listed.":error.message);
+    $("#coName").value=""; await loadAll(); render(); toast(`${name} added`);
+  }
+});
+
+setInterval(()=>{ const w=$("#nWhen"); if(w) w.textContent=fmt(new Date().toISOString())+" · set automatically"; }, 30000);
+
+/* =================== BOOT =================== */
+if(!sb){ showNotConfigured(); return; }
+sb.auth.onAuthStateChange((event, s)=>{
+  if(event==="PASSWORD_RECOVERY") needPassword=true;
+  if(["INITIAL_SESSION","SIGNED_IN","SIGNED_OUT","PASSWORD_RECOVERY"].includes(event)){
+    if(event==="SIGNED_IN" && session && s && session.user.id===s.user.id && me) return; // token refresh-like re-sign
+    setTimeout(()=>onSession(s),0);
+  }
+});
+})();
+</script>
+</body>
+</html>
